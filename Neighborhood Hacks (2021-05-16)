@@ -1,0 +1,290 @@
+from dataclasses import dataclass
+import datetime
+import time
+
+# Lukas's stuff
+@dataclass
+class Purchase:
+    amount: float
+    purchase_time: datetime.datetime
+
+
+def total_gain(x: datetime.datetime, y: datetime.datetime, purchase_history: list[Purchase]) -> float:
+    purchases = [p for p in purchase_history if x <= p.purchase_time < y]
+    return sum(p.amount for p in purchases)
+
+
+def average_gain(num_customers: int,
+                 x: datetime.datetime, y: datetime.datetime, purchase_history: list[Purchase]) -> float:
+    return total_gain(x, y, purchase_history) / num_customers
+
+
+# Dabid's stuff
+store = []
+
+
+def moving_average(x, y, purchase_list):
+    """
+    Returns the average price of each purchase when averaging time x to time y
+    from all the days in the last month
+    :param x:
+    :param y:
+    :param purchase_list:
+    :return:
+    """
+    day_index = purchase_list_day_sort(purchase_list)
+    return moving_average_helper(x, y, purchase_list, 0, 1, day_index)
+
+
+def moving_average_helper(x, y, purchase_list, avg, n, day_index):
+    """
+    :param x:
+    :param y:
+    :param purchase_list:
+    :param avg:
+    :param n:
+    :param day_index:
+    :return:
+    """
+    #  assume purchase list is in order of a 1D list with tuples.
+    #  assume the first element of the tuple is a price, the second is a time.
+    #  time is in seconds from midnight
+
+    if n > 30:
+        avg = avg / len(day_index)
+        return avg
+    else:
+        purchase_prices = [i for i, y in range(len(purchase_list))]
+        purchase_day = purchase_list_day(purchase_prices, day_index, n)
+        avg = avg + avg_price_day(x, y, purchase_day)
+        n += 1
+
+        return moving_average_helper(x, y, purchase_list, avg, n, day_index)
+
+
+def purchase_list_day_sort(purchase_list):
+    """
+    Returns the indexes of the first purchase made at the
+    beginning of each new day.
+    :param purchase_list:
+    :return:
+    """
+    #  assume purchase list is in order of a 1D list with tuples.
+    #  assume the first element of the tuple is a price, the second is a time.
+    #  time is in seconds from midnight
+    purchase_list_dates = [i for x, i in range(len(purchase_list))]
+    day_index = []
+    day = 0
+    for i, j in enumerate(purchase_list_dates):
+        day += 1
+        if j == "/" + str(day) + "/" or j == "/0" + str(day) + "/":
+            day_index.append(j)
+    return day_index
+
+
+def purchase_list_day(purchase_prices, day_index, day):
+    """
+    Returns the purchase list with only the elements from a specific day in it.
+    :param purchase_prices:
+    :param day_index:
+    :param day:
+    :return:
+    """
+
+    return purchase_prices[day_index[day - 1]: day_index[day + 1] + 1]
+
+
+def avg_price_day(x, y, purchase_day):
+    """
+    Returns the average gain per a defined day between times x and y.
+    :param x:
+    :param y:
+    :param purchase_day:
+    :return:
+    """
+    return avg_price_day_helper(x, y, purchase_day,
+                                0, len(purchase_day) - 1, )
+
+
+def avg_price_day_helper(x, y, purchase_day, a, b):
+    """
+    :param x:
+    :param y:
+    :param purchase_day:
+    :param a:
+    :param b:
+    :return:
+    """
+    if purchase_day[a] >= x and purchase_day[b] <= y:
+        avg = 0
+        for x in purchase_day:
+            avg += x
+        avg = avg / len(purchase_day)
+        return avg
+    else:
+        if purchase_day[a] < x:
+            return avg_price_day_helper(x, y, purchase_day, a + 1, b)
+        else:
+            return avg_price_day_helper(x, y, purchase_day, a, b - 1)
+
+# You will need this function
+def current_to_moving_average(song_list, x, y, purchase_list):
+    """
+    Returns a positive or negative number to be associated with the song
+    combination. This decides either good or bad gain in comparison to past
+    gains.
+    :param song_list:
+    :param x:
+    :param y:
+    :param purchase_list:
+    :return:
+    """
+    current_avg = average_gain(x, y, purchase_list)
+    moving_avg = moving_average(x, y, purchase_list)
+
+    song_list_averages = [song_list, current_avg - moving_avg]
+
+    return [song_list_averages]
+
+# You will need this function
+def store_song_data_sorted(store_inner):
+    n = len(store_inner)
+    # i is the length of the sorted sublist
+    for i in range(1, n):
+        # element to add to the sorted sublist is t[i]
+        j = i
+        while j > 0 and store_inner[j][1] < store_inner[j - 1][1]:
+            tmp = store_inner[i]
+            store_inner[i] = store_inner[j - 1]
+            store_inner[j - 1] = tmp
+            j = j - 1
+    return store_inner
+
+
+def store_song_data_unsorted(song_list, x, y, purchase_list):
+    store_inner = [current_to_moving_average(song_list, x, y, purchase_list)]
+    return store_song_data_sorted(store_inner)
+
+
+# Amy's Stuff (An attempt was made)
+'''
+The following classes are observables and observers.
+They are measuring the number of customers in the store based on 
+button presses from the staff (enter, exit).
+'''
+class Subscriber:
+    def __init__(self, val):
+        self.val = val
+    def update(self):
+        # test capacity: capacity = 3
+        if self.val == True:
+            capacity += 1
+        else:
+            capacity -= 1
+        # test code: print(capacity)
+        return capacity
+        
+class Publisher_enter:
+    def __init__(self):
+        self.subscribers = set()
+    def register(self, who):
+        self.subscribers.add(who)
+    def unregister(self, who):
+        self.subscribers.discard(who)
+    def dispatch(self):
+        for subscriber in self.subscribers:
+            subscriber.update()
+
+class Publisher_exit:
+    def __init__(self):
+        self.subscribers = set()
+    def register(self, who):
+        self.subscribers.add(who)
+    def unregister(self, who):
+        self.subscribers.discard(who)
+    def dispatch(self):
+        for subscriber in self.subscribers:
+            subscriber.update()
+
+def button_push():
+    enter = Publisher_enter()
+    leave = Publisher_exit()
+    
+    name1 = Subscriber(True)
+    name2 = Subscriber(False)
+
+    
+    enter.register(name1)
+    #server is notified and capacity changes
+    enter.dispatch()
+    #unregister so that capacity doesn't change next time
+    enter.unregister(name1)
+
+
+# Merthy's stuff
+@dataclass
+class Session:
+    songs = []
+    score = int
+    time = datetime.datetime
+
+# WARNING THIS IS REALLY REALLY SCUFFED
+def song_compare(songlist_list, scores_list):
+    """
+    Compares each song combination to an/other song
+    combination/s to decide which song decreases a
+    combination's overall score. Each combination has
+    a score associated with it, which is distributed
+    among all the songs in that list. Songs with an
+    overall low score are bad.
+    :param songlist_list:
+    :param scores_list:
+    """
+    sorted_songs = {}
+    list_index = 0
+
+    # assigns each song a cumulative score
+    for songlist in songlist_list:
+        list_score = scores_list[list_index]
+        song_score = list_score / len(songlist)
+        for song in songlist:
+            if song in sorted_songs:
+                songtuple = sorted_songs.get(song)
+                old_score = songtuple[0]
+                new_score = old_score + song_score
+                appearances = songtuple[1] + 1
+                newtuple = (new_score, appearances)
+                sorted_songs.update({song: newtuple})
+            else:
+                songtuple = (song_score, 1)
+                sorted_songs.update({song: songtuple})
+        list_index += 1
+    
+
+    # calculates average for all the songs
+    for song in sorted_songs:
+        songtuple = sorted_songs.get(song)
+        final_score = songtuple[0] / songtuple[1]
+        sorted_songs.update({final_score: song})
+
+
+    # removes string keys so all that's left is a sorted dictionary
+    for item in sorted_songs:
+        if isinstance(item, str):
+            sorted_songs.pop(item)
+
+
+    return sorted_songs
+
+
+def new_session():
+    t = time.localtime()
+    seconds_since_utc_midnight = t.tm_sec + (t.tm_min * 60) \
+                                 + (t.tm_hour * 3600)
+    return seconds_since_utc_midnight
+
+
+def main():
+    songlist_list = # SOME LIST HERE
+    scores_list = # SOME LIST HERE
+    print(song_compare(songlist_list, scores_list))
